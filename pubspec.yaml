@@ -1,6 +1,6 @@
 name: universal_serial
 description: "A unified, cross-platform API for USB/UART serial communication across Web, Android, Windows, macOS, and Linux."
-version: 0.0.3
+version: 0.0.4
 homepage: https://github.com/seetherisingazeez/universal_serial
 repository: https://github.com/seetherisingazeez/universal_serial
 issue_tracker: https://github.com/seetherisingazeez/universal_serial/issues

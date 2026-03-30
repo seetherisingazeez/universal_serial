@@ -1,3 +1,11 @@
+## 0.0.4
+
+- Fixed CHANGELOG missing version issue.
+
+## 0.0.3
+
+- Updated project metadata and configuration.
+
 ## 0.0.2
 
 - Added `topics` and `issue_tracker` in pubspec to maximize pub.dev SEO score and discoverability tags mapping.
