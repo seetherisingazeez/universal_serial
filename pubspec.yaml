@@ -11,9 +11,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_libserialport: any
-  usb_serial: any
-  webserial: any
+  flutter_libserialport: ^0.6.0
+  usb_serial: ^0.5.2
+  webserial: ^1.2.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

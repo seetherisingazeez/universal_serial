@@ -10,6 +10,7 @@
         "flutter",
         "flutter_libserialport",
         "usb_serial",
+        "web",
         "webserial"
       ],
       "devDependencies": [
@@ -41,6 +42,11 @@
         "test_api",
         "vector_math"
       ]
+    },
+    {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
     },
     {
       "name": "webserial",
@@ -166,11 +172,6 @@
         "string_scanner",
         "term_glyph"
       ]
-    },
-    {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
     },
     {
       "name": "async",
