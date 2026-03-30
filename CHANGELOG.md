@@ -1,3 +1,7 @@
+## 0.0.2
+
+- Added `topics` and `issue_tracker` in pubspec to maximize pub.dev SEO score and discoverability tags mapping.
+
 ## 0.0.1
 
 - Initial release.
