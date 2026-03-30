@@ -1,0 +1,8 @@
+.dart_tool
+.idea
+.vscode
+build
+.DS_Store
+.dart_tool/package_graph.json
+.dart_tool/package_config.json
+.dart_tool/extension_discovery

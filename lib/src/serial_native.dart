@@ -83,6 +83,16 @@ class AndroidSerialManager implements SerialManager {
 
   @override
   Stream<Uint8List> get receiveStream => _streamController.stream;
+
+  @override
+  Stream<DeviceEvent> get deviceEventStream {
+    return UsbSerial.usbEventStream?.map((event) {
+      final type = event.event == UsbEvent.ACTION_USB_ATTACHED
+          ? DeviceEventType.connected
+          : DeviceEventType.disconnected;
+      return DeviceEvent(type: type, deviceName: event.device?.deviceName);
+    }) ?? const Stream.empty();
+  }
 }
 
 /// Native serial manager implementation spanning Windows, Mac, and Linux leveraging [flutter_libserialport].
@@ -91,6 +101,10 @@ class DesktopSerialManager implements SerialManager {
   SerialPortReader? _reader;
   final StreamController<Uint8List> _streamController = StreamController<Uint8List>.broadcast();
   StreamSubscription<Uint8List>? _subscription;
+
+  StreamController<DeviceEvent>? _deviceEventController;
+  Timer? _pollingTimer;
+  List<String> _lastPorts = [];
 
   @override
   Future<List<String>> getAvailablePorts() async {
@@ -163,6 +177,33 @@ class DesktopSerialManager implements SerialManager {
 
   @override
   Stream<Uint8List> get receiveStream => _streamController.stream;
+
+  @override
+  Stream<DeviceEvent> get deviceEventStream {
+    _deviceEventController ??= StreamController<DeviceEvent>.broadcast(
+      onListen: () {
+        _lastPorts = SerialPort.availablePorts;
+        _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+          final currentPorts = SerialPort.availablePorts;
+          final addedPorts = currentPorts.where((p) => !_lastPorts.contains(p));
+          final removedPorts = _lastPorts.where((p) => !currentPorts.contains(p));
+          
+          for (final port in addedPorts) {
+            _deviceEventController?.add(DeviceEvent(type: DeviceEventType.connected, deviceName: port));
+          }
+          for (final port in removedPorts) {
+            _deviceEventController?.add(DeviceEvent(type: DeviceEventType.disconnected, deviceName: port));
+          }
+          _lastPorts = currentPorts;
+        });
+      },
+      onCancel: () {
+        _pollingTimer?.cancel();
+        _pollingTimer = null;
+      },
+    );
+    return _deviceEventController!.stream;
+  }
 }
 
 /// Platform-aware factory evaluating dart:io globals to assign the right implementation implicitly.

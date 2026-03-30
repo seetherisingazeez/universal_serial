@@ -1,3 +1,7 @@
+## 0.0.5
+
+- feat: add device connection event stream to serial manager and implement across native and web platforms
+
 ## 0.0.4
 
 - Fixed CHANGELOG missing version issue.

@@ -14,6 +14,7 @@ class WebSerialManager implements SerialManager {
   web.ReadableStreamDefaultReader? _reader;
   bool _isReading = false;
   final StreamController<Uint8List> _streamController = StreamController<Uint8List>.broadcast();
+  StreamController<DeviceEvent>? _deviceEventController;
 
   @override
   Future<List<String>> getAvailablePorts() async {
@@ -107,6 +108,26 @@ class WebSerialManager implements SerialManager {
 
   @override
   Stream<Uint8List> get receiveStream => _streamController.stream;
+
+  @override
+  Stream<DeviceEvent> get deviceEventStream {
+    _deviceEventController ??= StreamController<DeviceEvent>.broadcast(
+      onListen: () {
+        serial.onconnect = ((web.Event event) {
+          _deviceEventController?.add(const DeviceEvent(type: DeviceEventType.connected));
+        } as void Function(web.Event)).toJS;
+        
+        serial.ondisconnect = ((web.Event event) {
+          _deviceEventController?.add(const DeviceEvent(type: DeviceEventType.disconnected));
+        } as void Function(web.Event)).toJS;
+      },
+      onCancel: () {
+        serial.onconnect = null;
+        serial.ondisconnect = null;
+      },
+    );
+    return _deviceEventController!.stream;
+  }
 
   Future<void> _readLoop() async {
     if (_port?.readable == null) return;

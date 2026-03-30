@@ -1,5 +1,22 @@
 import 'dart:typed_data';
 
+/// Enumerates the type of physical device event occurring on a serial bus.
+enum DeviceEventType {
+  connected,
+  disconnected,
+}
+
+/// Represents a physical plug/unplug event on the host machine.
+class DeviceEvent {
+  final DeviceEventType type;
+  final String? deviceName;
+
+  const DeviceEvent({required this.type, this.deviceName});
+
+  @override
+  String toString() => 'DeviceEvent(type: $type, deviceName: $deviceName)';
+}
+
 /// The shared architectural interface for Universal Serial.
 /// Inherit this class to build new OS abstractions.
 abstract class SerialManager {
@@ -21,4 +38,7 @@ abstract class SerialManager {
 
   /// Asynchronous broadcasting stream yielding raw bytes from the peripheral.
   Stream<Uint8List> get receiveStream;
+
+  /// Asynchronous broadcasting stream yielding hardware connect/disconnect events.
+  Stream<DeviceEvent> get deviceEventStream;
 }
