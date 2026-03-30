@@ -8,6 +8,7 @@ import 'package:webserial/webserial.dart';
 
 import 'serial_manager.dart';
 
+/// Manager parsing Javascript abstractions through [dart:js_interop] mapping to [webserial].
 class WebSerialManager implements SerialManager {
   JSSerialPort? _port;
   web.ReadableStreamDefaultReader? _reader;
@@ -136,4 +137,5 @@ class WebSerialManager implements SerialManager {
   }
 }
 
+/// Exposes a Dart library level getter so consumers can grab the Web implementation conditionally.
 SerialManager getSerialManager() => WebSerialManager();

@@ -8,6 +8,7 @@ import 'package:flutter_libserialport/flutter_libserialport.dart';
 
 import 'serial_manager.dart';
 
+/// Native serial manager implementation specifically tailored for [usb_serial] acting as an OTG connector.
 class AndroidSerialManager implements SerialManager {
   UsbPort? _port;
   final StreamController<Uint8List> _streamController = StreamController<Uint8List>.broadcast();
@@ -84,6 +85,7 @@ class AndroidSerialManager implements SerialManager {
   Stream<Uint8List> get receiveStream => _streamController.stream;
 }
 
+/// Native serial manager implementation spanning Windows, Mac, and Linux leveraging [flutter_libserialport].
 class DesktopSerialManager implements SerialManager {
   SerialPort? _port;
   SerialPortReader? _reader;
@@ -163,6 +165,7 @@ class DesktopSerialManager implements SerialManager {
   Stream<Uint8List> get receiveStream => _streamController.stream;
 }
 
+/// Platform-aware factory evaluating dart:io globals to assign the right implementation implicitly.
 SerialManager getSerialManager() {
   if (Platform.isAndroid) {
     return AndroidSerialManager();

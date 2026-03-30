@@ -12,6 +12,14 @@ topics:
   - cross-platform
   - uart
 
+platforms:
+  android:
+  ios:
+  windows:
+  macos:
+  linux:
+  web:
+
 environment:
   sdk: ">=3.0.0 <4.0.0"
   flutter: ">=3.0.0"
