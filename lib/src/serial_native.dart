@@ -13,6 +13,29 @@ class AndroidSerialManager implements SerialManager {
   UsbPort? _port;
   final StreamController<Uint8List> _streamController = StreamController<Uint8List>.broadcast();
   StreamSubscription<Uint8List>? _subscription;
+  String? _connectedPortAddress;
+
+  static AndroidSerialManager? _activeInstance;
+  static bool _exitHandlersRegistered = false;
+
+  AndroidSerialManager() {
+    _activeInstance = this;
+    _registerExitHandlers();
+  }
+
+  static void _registerExitHandlers() {
+    if (_exitHandlersRegistered) return;
+    _exitHandlersRegistered = true;
+
+    void handle(ProcessSignal signal) {
+      final instance = _activeInstance;
+      if (instance == null) return;
+      unawaited(instance.disconnect());
+    }
+
+    ProcessSignal.sigterm.watch().listen(handle);
+    ProcessSignal.sigint.watch().listen(handle);
+  }
 
   @override
   Future<List<String>> getAvailablePorts() async {
@@ -27,6 +50,9 @@ class AndroidSerialManager implements SerialManager {
     }
 
     if (_port != null) {
+      if (portAddress == _connectedPortAddress) {
+        return true;
+      }
       await disconnect();
     }
 
@@ -47,7 +73,10 @@ class AndroidSerialManager implements SerialManager {
       if (_port == null) return false;
 
       final success = await _port!.open();
-      if (!success) return false;
+      if (!success) {
+        await disconnect();
+        return false;
+      }
 
       await _port!.setPortParameters(
           baudRate, UsbPort.DATABITS_8, UsbPort.STOPBITS_1, UsbPort.PARITY_NONE);
@@ -56,9 +85,11 @@ class AndroidSerialManager implements SerialManager {
         _streamController.sink.add(data);
       });
 
+      _connectedPortAddress = portAddress;
       return true;
     } catch (e) {
       debugPrint('Failed to connect: $e');
+      await disconnect();
       return false;
     }
   }
@@ -71,6 +102,7 @@ class AndroidSerialManager implements SerialManager {
       await _port!.close();
       _port = null;
     }
+    _connectedPortAddress = null;
   }
 
   @override
@@ -101,10 +133,33 @@ class DesktopSerialManager implements SerialManager {
   SerialPortReader? _reader;
   final StreamController<Uint8List> _streamController = StreamController<Uint8List>.broadcast();
   StreamSubscription<Uint8List>? _subscription;
+  String? _connectedPortAddress;
 
   StreamController<DeviceEvent>? _deviceEventController;
   Timer? _pollingTimer;
   List<String> _lastPorts = [];
+
+  static DesktopSerialManager? _activeInstance;
+  static bool _exitHandlersRegistered = false;
+
+  DesktopSerialManager() {
+    _activeInstance = this;
+    _registerExitHandlers();
+  }
+
+  static void _registerExitHandlers() {
+    if (_exitHandlersRegistered) return;
+    _exitHandlersRegistered = true;
+
+    void handle(ProcessSignal signal) {
+      final instance = _activeInstance;
+      if (instance == null) return;
+      unawaited(instance.disconnect());
+    }
+
+    ProcessSignal.sigterm.watch().listen(handle);
+    ProcessSignal.sigint.watch().listen(handle);
+  }
 
   @override
   Future<List<String>> getAvailablePorts() async {
@@ -118,6 +173,9 @@ class DesktopSerialManager implements SerialManager {
     }
 
     if (_port != null) {
+      if (portAddress == _connectedPortAddress && _port!.isOpen) {
+        return true;
+      }
       await disconnect();
     }
 
@@ -125,6 +183,7 @@ class DesktopSerialManager implements SerialManager {
       _port = SerialPort(portAddress);
       if (!_port!.openReadWrite()) {
         debugPrint('Failed to open port');
+        await disconnect();
         return false;
       }
 
@@ -142,9 +201,11 @@ class DesktopSerialManager implements SerialManager {
         _streamController.sink.add(data);
       });
 
+      _connectedPortAddress = portAddress;
       return true;
     } catch (e) {
       debugPrint('Failed to connect: $e');
+      await disconnect();
       return false;
     }
   }
@@ -162,6 +223,7 @@ class DesktopSerialManager implements SerialManager {
       _port!.dispose();
       _port = null;
     }
+    _connectedPortAddress = null;
   }
 
   @override
@@ -207,12 +269,17 @@ class DesktopSerialManager implements SerialManager {
 }
 
 /// Platform-aware factory evaluating dart:io globals to assign the right implementation implicitly.
+SerialManager? _nativeSerialManagerSingleton;
 SerialManager getSerialManager() {
+  if (_nativeSerialManagerSingleton != null) return _nativeSerialManagerSingleton!;
+
   if (Platform.isAndroid) {
-    return AndroidSerialManager();
+    _nativeSerialManagerSingleton = AndroidSerialManager();
   } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-    return DesktopSerialManager();
+    _nativeSerialManagerSingleton = DesktopSerialManager();
   } else {
     throw UnsupportedError('Unsupported platform for serial communication');
   }
+
+  return _nativeSerialManagerSingleton!;
 }

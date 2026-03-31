@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:js_interop';
 
 
+import 'dart:html' as html;
+
 import 'package:flutter/foundation.dart';
 import 'package:web/web.dart' as web;
 import 'package:webserial/webserial.dart';
@@ -16,6 +18,30 @@ class WebSerialManager implements SerialManager {
   final StreamController<Uint8List> _streamController = StreamController<Uint8List>.broadcast();
   StreamController<DeviceEvent>? _deviceEventController;
 
+  static WebSerialManager? _activeInstance;
+  static bool _exitHandlersRegistered = false;
+
+  WebSerialManager() {
+    _activeInstance = this;
+    _registerExitHandlers();
+  }
+
+  static void _registerExitHandlers() {
+    if (_exitHandlersRegistered) return;
+    _exitHandlersRegistered = true;
+
+    void scheduleDisconnect(html.Event _) {
+      final instance = _activeInstance;
+      if (instance == null) return;
+      // Best-effort cleanup; browsers may not allow awaiting during unload.
+      unawaited(instance.disconnect());
+    }
+
+    html.window.addEventListener('beforeunload', scheduleDisconnect);
+    html.window.addEventListener('pagehide', scheduleDisconnect);
+    html.window.addEventListener('unload', scheduleDisconnect);
+  }
+
   @override
   Future<List<String>> getAvailablePorts() async {
     return <String>[];
@@ -25,34 +51,51 @@ class WebSerialManager implements SerialManager {
   Future<bool> connect({String? portAddress, required int baudRate}) async {
     if (_port != null) {
       debugPrint("WebSerialManager: A port is already open.");
-      return false;
+      if (!_isReading && _port!.readable != null) {
+        _isReading = true;
+        _readLoop();
+      }
+      return _port!.readable != null || _port!.writable != null;
     }
 
     try {
       final selectedPort = await requestWebSerialPort(<JSFilterObject>[].toJS);
       if (selectedPort != null) {
         _port = selectedPort;
-        await _port!.open(
-          JSSerialOptions(
-            baudRate: baudRate,
-            dataBits: 8,
-            stopBits: 1,
-            parity: "none",
-            bufferSize: 2048,
-            flowControl: "none",
-          ),
-        ).toDart;
-
-        debugPrint("WebSerialManager: Port opened successfully.");
+        bool opened = false;
+        try {
+          await _port!.open(
+            JSSerialOptions(
+              baudRate: baudRate,
+              dataBits: 8,
+              stopBits: 1,
+              parity: "none",
+              bufferSize: 2048,
+              flowControl: "none",
+            ),
+          ).toDart;
+          opened = true;
+          debugPrint("WebSerialManager: Port opened successfully.");
+        } catch (e) {
+          // Some browsers throw if the port is already open (e.g., for granted/paired permissions).
+          debugPrint("WebSerialManager: Port.open threw (treating as possibly already open): $e");
+        }
 
         _port!.ondisconnect = ((web.Event event) {
           debugPrint('WebSerialManager: The active port disconnected.');
           disconnect();
         } as void Function(web.Event)).toJS;
 
-        _isReading = true;
-        _readLoop();
-        return true;
+        final canRead = _port!.readable != null;
+        if (opened || canRead) {
+          _isReading = true;
+          _readLoop();
+          return true;
+        }
+
+        debugPrint("WebSerialManager: Port did not become readable.");
+        await disconnect();
+        return false;
       } else {
         debugPrint("WebSerialManager: No port selected.");
         return false;
@@ -159,4 +202,5 @@ class WebSerialManager implements SerialManager {
 }
 
 /// Exposes a Dart library level getter so consumers can grab the Web implementation conditionally.
-SerialManager getSerialManager() => WebSerialManager();
+WebSerialManager? _webSerialManagerSingleton;
+SerialManager getSerialManager() => _webSerialManagerSingleton ??= WebSerialManager();

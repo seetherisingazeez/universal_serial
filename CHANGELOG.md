@@ -1,3 +1,7 @@
+## 0.0.6
+
+- feat: implement exit handlers for Android, Desktop, and Web serial managers to ensure proper disconnection on process termination
+
 ## 0.0.5
 
 - feat: add device connection event stream to serial manager and implement across native and web platforms
