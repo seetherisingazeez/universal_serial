@@ -1,3 +1,7 @@
+## 0.0.7
+
+- feat: enhance device event handling in WebSerialManager by using event listeners for connection and disconnection events
+
 ## 0.0.6
 
 - feat: implement exit handlers for Android, Desktop, and Web serial managers to ensure proper disconnection on process termination
