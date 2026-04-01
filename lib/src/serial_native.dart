@@ -81,9 +81,19 @@ class AndroidSerialManager implements SerialManager {
       await _port!.setPortParameters(
           baudRate, UsbPort.DATABITS_8, UsbPort.STOPBITS_1, UsbPort.PARITY_NONE);
 
-      _subscription = _port!.inputStream!.listen((data) {
-        _streamController.sink.add(data);
-      });
+      _subscription = _port!.inputStream!.listen(
+        (data) {
+          _streamController.sink.add(data);
+        },
+        onError: (error) {
+          debugPrint('USB stream error: $error');
+          unawaited(disconnect());
+        },
+        onDone: () {
+          unawaited(disconnect());
+        },
+        cancelOnError: true,
+      );
 
       _connectedPortAddress = portAddress;
       return true;
@@ -197,9 +207,19 @@ class DesktopSerialManager implements SerialManager {
       config.dispose();
 
       _reader = SerialPortReader(_port!);
-      _subscription = _reader!.stream.listen((data) {
-        _streamController.sink.add(data);
-      });
+      _subscription = _reader!.stream.listen(
+        (data) {
+          _streamController.sink.add(data);
+        },
+        onError: (Object error) {
+          debugPrint('Serial port stream error: $error');
+          unawaited(disconnect());
+        },
+        onDone: () {
+          unawaited(disconnect());
+        },
+        cancelOnError: true,
+      );
 
       _connectedPortAddress = portAddress;
       return true;

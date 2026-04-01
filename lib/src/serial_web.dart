@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:js_interop';
 
 
-import 'dart:html' as html;
-
 import 'package:flutter/foundation.dart';
 import 'package:web/web.dart' as web;
 import 'package:webserial/webserial.dart';
@@ -32,16 +30,17 @@ class WebSerialManager implements SerialManager {
     if (_exitHandlersRegistered) return;
     _exitHandlersRegistered = true;
 
-    void scheduleDisconnect(html.Event _) {
+    void scheduleDisconnect(web.Event _) {
       final instance = _activeInstance;
       if (instance == null) return;
       // Best-effort cleanup; browsers may not allow awaiting during unload.
       unawaited(instance.disconnect());
     }
 
-    html.window.addEventListener('beforeunload', scheduleDisconnect);
-    html.window.addEventListener('pagehide', scheduleDisconnect);
-    html.window.addEventListener('unload', scheduleDisconnect);
+    final jsScheduleDisconnect = scheduleDisconnect.toJS;
+    web.window.addEventListener('beforeunload', jsScheduleDisconnect);
+    web.window.addEventListener('pagehide', jsScheduleDisconnect);
+    web.window.addEventListener('unload', jsScheduleDisconnect);
   }
 
   @override
