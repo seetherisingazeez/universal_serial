@@ -1,3 +1,7 @@
+## 0.0.9
+
+- fix: emit disconnected event when serial read loop fails unexpectedly
+
 ## 0.0.8
 
 - fix: add error and completion handling to serial streams and migrate web platform event listeners to dart:web

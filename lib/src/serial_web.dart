@@ -209,6 +209,11 @@ class WebSerialManager implements SerialManager {
         }
       } catch (e) {
         debugPrint("WebSerialManager: Read loop failed. Error: $e");
+        // An unexpected read error usually indicates a physical disconnection or dropped port.
+        if (_isReading) {
+          debugPrint("WebSerialManager: Emitting disconnect event due to read failure.");
+          _emitDeviceEvent(DeviceEventType.disconnected);
+        }
         break;
       }
     }
