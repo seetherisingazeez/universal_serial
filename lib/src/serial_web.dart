@@ -17,6 +17,8 @@ class WebSerialManager implements SerialManager {
   bool _isReading = false;
   final StreamController<Uint8List> _streamController = StreamController<Uint8List>.broadcast();
   StreamController<DeviceEvent>? _deviceEventController;
+  web.EventListener? _serialConnectListener;
+  web.EventListener? _serialDisconnectListener;
 
   static WebSerialManager? _activeInstance;
   static bool _exitHandlersRegistered = false;
@@ -83,7 +85,8 @@ class WebSerialManager implements SerialManager {
 
         _port!.ondisconnect = ((web.Event event) {
           debugPrint('WebSerialManager: The active port disconnected.');
-          disconnect();
+          _emitDeviceEvent(DeviceEventType.disconnected);
+          unawaited(disconnect());
         } as void Function(web.Event)).toJS;
 
         final canRead = _port!.readable != null;
@@ -156,20 +159,34 @@ class WebSerialManager implements SerialManager {
   Stream<DeviceEvent> get deviceEventStream {
     _deviceEventController ??= StreamController<DeviceEvent>.broadcast(
       onListen: () {
-        serial.onconnect = ((web.Event event) {
-          _deviceEventController?.add(const DeviceEvent(type: DeviceEventType.connected));
-        } as void Function(web.Event)).toJS;
-        
-        serial.ondisconnect = ((web.Event event) {
-          _deviceEventController?.add(const DeviceEvent(type: DeviceEventType.disconnected));
-        } as void Function(web.Event)).toJS;
+        // Global navigator.serial connect/disconnect is often more reliable via
+        // addEventListener than the onconnect/ondisconnect properties. Port-level
+        // disconnect (see connect()) is still required for unplug while connected.
+        _serialConnectListener = ((web.Event event) {
+          _emitDeviceEvent(DeviceEventType.connected);
+        }).toJS;
+        _serialDisconnectListener = ((web.Event event) {
+          _emitDeviceEvent(DeviceEventType.disconnected);
+        }).toJS;
+        serial.addEventListener('connect', _serialConnectListener);
+        serial.addEventListener('disconnect', _serialDisconnectListener);
       },
       onCancel: () {
-        serial.onconnect = null;
-        serial.ondisconnect = null;
+        if (_serialConnectListener != null) {
+          serial.removeEventListener('connect', _serialConnectListener);
+          _serialConnectListener = null;
+        }
+        if (_serialDisconnectListener != null) {
+          serial.removeEventListener('disconnect', _serialDisconnectListener);
+          _serialDisconnectListener = null;
+        }
       },
     );
     return _deviceEventController!.stream;
+  }
+
+  void _emitDeviceEvent(DeviceEventType type, {String? deviceName}) {
+    _deviceEventController?.add(DeviceEvent(type: type, deviceName: deviceName));
   }
 
   Future<void> _readLoop() async {
