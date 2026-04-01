@@ -1,3 +1,7 @@
+## 0.0.8
+
+- fix: add error and completion handling to serial streams and migrate web platform event listeners to dart:web
+
 ## 0.0.7
 
 - feat: enhance device event handling in WebSerialManager by using event listeners for connection and disconnection events
