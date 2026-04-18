@@ -8,23 +8,6 @@ import 'package:webserial/webserial.dart';
 
 import 'serial_manager.dart';
 
-@JS('window.serialPolyfill')
-external JSSerial? get _serialPolyfill;
-
-JSSerial get _effectiveSerial {
-  try {
-    if (_serialPolyfill != null) return _serialPolyfill!;
-  } catch (_) {}
-  return serial; // Fall back to native `navigator.serial` from webserial package
-}
-
-Future<JSSerialPort?> _localRequestWebSerialPort(JSArray<JSFilterObject>? filters) async {
-  filters ??= <JSFilterObject>[].toJS;
-  return await _effectiveSerial
-      .requestPort(JSSerialPortRequestOptions(filters: filters))
-      .toDart;
-}
-
 /// Manager parsing Javascript abstractions through [dart:js_interop] mapping to [webserial].
 class WebSerialManager implements SerialManager {
   JSSerialPort? _port;
@@ -77,7 +60,7 @@ class WebSerialManager implements SerialManager {
     }
 
     try {
-      final selectedPort = await _localRequestWebSerialPort(<JSFilterObject>[].toJS);
+      final selectedPort = await requestWebSerialPort(<JSFilterObject>[].toJS);
       if (selectedPort != null) {
         _port = selectedPort;
         bool opened = false;
@@ -184,16 +167,16 @@ class WebSerialManager implements SerialManager {
         _serialDisconnectListener = ((web.Event event) {
           _emitDeviceEvent(DeviceEventType.disconnected);
         }).toJS;
-        _effectiveSerial.addEventListener('connect', _serialConnectListener);
-        _effectiveSerial.addEventListener('disconnect', _serialDisconnectListener);
+        serial.addEventListener('connect', _serialConnectListener);
+        serial.addEventListener('disconnect', _serialDisconnectListener);
       },
       onCancel: () {
         if (_serialConnectListener != null) {
-          _effectiveSerial.removeEventListener('connect', _serialConnectListener);
+          serial.removeEventListener('connect', _serialConnectListener);
           _serialConnectListener = null;
         }
         if (_serialDisconnectListener != null) {
-          _effectiveSerial.removeEventListener('disconnect', _serialDisconnectListener);
+          serial.removeEventListener('disconnect', _serialDisconnectListener);
           _serialDisconnectListener = null;
         }
       },
