@@ -234,8 +234,13 @@ class DesktopSerialManager implements SerialManager {
   Future<void> disconnect() async {
     await _subscription?.cancel();
     _subscription = null;
-    _reader?.close();
-    _reader = null;
+    if (_reader != null) {
+      _reader!.close();
+      // Wait for the background reading thread to gracefully terminate
+      // before we delete the memory pointer from under it causing SIGABRT.
+      await Future.delayed(const Duration(milliseconds: 250));
+      _reader = null;
+    }
     if (_port != null) {
       if (_port!.isOpen) {
         _port!.close();
